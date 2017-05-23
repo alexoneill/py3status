@@ -42,6 +42,10 @@ Configuration parameters:
         when set to True,  '13:14' is '🕐', '13:16' is '🕜' and '13:31' is '🕜';
         when set to False, '13:14' is '🕐', '13:16' is '🕐' and '13:31' is '🕜'.
         (default True)
+    timezone_check: defines when timezone checking is done. If enabled, timezone
+        is checked on every update
+        (default False)
+
 
 Format placeholders:
     {icon} a character representing the time from `blocks`
@@ -120,6 +124,7 @@ class Py3status:
         '[{name_unclear} ]{icon}',
     ]
     round_to_nearest_block = True
+    timezone_check = False
 
     def post_config_hook(self):
         # Multiple clocks are possible that can be cycled through
@@ -132,7 +137,11 @@ class Py3status:
         self._items = {}
         matches = re.findall('\{([^}]*)\}', ''.join(self.format))
         for match in matches:
-            self._items[match] = self._get_timezone(match)
+            if(self.timezone_check):
+                self._items[match] = lambda: self._get_timezone(match)
+            else:
+                value = self._get_timezone(match)
+                self._items[match] = lambda: value
 
         self.multiple_tz = len(self._items) > 1
 
@@ -228,7 +237,9 @@ class Py3status:
 
         # update our times
         times = {}
-        for name, zone in self._items.items():
+        for value in self._items.items():
+            name, zone = value()
+
             if zone == '?':
                 times[name] = '?'
             else:
