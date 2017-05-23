@@ -134,15 +134,8 @@ class Py3status:
         if len(self.format) == 1:
             self.cycle = 0
         # find any declared timezones eg {Europe/London}
-        self._items = {}
         matches = re.findall('\{([^}]*)\}', ''.join(self.format))
-        for match in matches:
-            if(self.timezone_check):
-                self._items[match] = lambda: self._get_timezone(match)
-            else:
-                value = self._get_timezone(match)
-                self._items[match] = lambda: value
-
+        self._items = set(matches)
         self.multiple_tz = len(self._items) > 1
 
         if not isinstance(self.format_time, list):
@@ -188,6 +181,9 @@ class Py3status:
         # special Local timezone
         if tz == 'Local':
             try:
+                if self.timezone_check:
+                    return tzlocal.reload_localzone()
+
                 return tzlocal.get_localzone()
             except pytz.UnknownTimeZoneError:
                 return '?'
@@ -237,8 +233,8 @@ class Py3status:
 
         # update our times
         times = {}
-        for value in self._items.items():
-            name, zone = value()
+        for name in self._items:
+            zone = self._get_timezone(name)
 
             if zone == '?':
                 times[name] = '?'
